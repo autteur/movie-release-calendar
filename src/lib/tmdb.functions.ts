@@ -11,7 +11,7 @@ export type MovieHit = {
 export const searchMovies = createServerFn({ method: "GET" })
   .inputValidator((d: { q: string }) => ({ q: String(d.q ?? "").slice(0, 100) }))
   .handler(async ({ data }): Promise<{ results: MovieHit[]; error?: string | undefined }> => {
-    const key = process.env.TMDB_API_KEY;
+    const key = process.env["TMDB_API_KEY"];
     if (!key) return { results: [], error: "Movie search isn't set up yet (missing TMDB key)." };
     if (!data.q.trim()) return { results: [] };
     const isBearer = key.length > 40;

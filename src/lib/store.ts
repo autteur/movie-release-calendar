@@ -42,7 +42,7 @@ export function reminderTime(e: CalEvent): number | null {
   if (e.remindDays < 0) return null;
   const [h, m] = (e.time || "09:00").split(":").map(Number);
   const d = new Date(e.date + "T00:00:00");
-  d.setHours(h, m);
+  d.setHours(h ?? 9, m ?? 0);
   d.setDate(d.getDate() - e.remindDays);
   return d.getTime();
 }
