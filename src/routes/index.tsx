@@ -174,7 +174,7 @@ function EventRow({ e, onDelete, showDate }: { e: CalEvent; onDelete: () => void
 function AddSheet({ defaultDate, onClose, onAdd }: { defaultDate: string; onClose: () => void; onAdd: (e: CalEvent[]) => void }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<MovieHit[]>([]);
-  const [err, setErr] = useState<string>();
+  const [err, setErr] = useState<string | undefined>();
   const [movie, setMovie] = useState<MovieHit | null>(null);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<EventKind>("release");
