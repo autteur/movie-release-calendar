@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { Bell, ChevronDown } from "lucide-react";
 import { searchMovies, type MovieHit } from "@/lib/tmdb.functions";
 import {
   useEvents,
@@ -119,7 +120,7 @@ function Index() {
         </h3>
         {dayEvents.length === 0 && <p className="text-sm text-muted-foreground">Nothing on this day.</p>}
         <div className="space-y-2">
-          {dayEvents.map((e) => <EventRow key={e.id} e={e} onDelete={() => save(events.filter((x) => x.id !== e.id))} />)}
+          {dayEvents.map((e) => <EventRow key={e.id} e={e} onDelete={() => save(events.filter((x) => x.id !== e.id))} onBell={() => save(events.map((x) => x.id === e.id ? { ...x, remindDays: x.remindDays >= 0 ? -1 : 1, notified: false } : x))} />)}
         </div>
       </section>
 
@@ -127,7 +128,7 @@ function Index() {
         <section className="mt-8">
           <h3 className="mb-3 text-sm text-muted-foreground">Upcoming</h3>
           <div className="space-y-2">
-            {upcoming.map((e) => <EventRow key={e.id} e={e} showDate onDelete={() => save(events.filter((x) => x.id !== e.id))} />)}
+            {upcoming.map((e) => <EventRow key={e.id} e={e} showDate onDelete={() => save(events.filter((x) => x.id !== e.id))} onBell={() => save(events.map((x) => x.id === e.id ? { ...x, remindDays: x.remindDays >= 0 ? -1 : 1, notified: false } : x))} />)}
           </div>
         </section>
       )}
@@ -147,30 +148,42 @@ function Index() {
   );
 }
 
-function EventRow({ e, onDelete, showDate }: { e: CalEvent; onDelete: () => void; showDate?: boolean }) {
+const shortDate = (d: string) => new Date(d + "T00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+function EventRow({ e, onDelete, onBell, showDate }: { e: CalEvent; onDelete: () => void; onBell: () => void; showDate?: boolean }) {
   const ics = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([toIcs(e)], { type: "text/calendar" }));
     a.download = `${e.title}.ics`;
     a.click();
   };
+  const on = e.remindDays >= 0;
   return (
-    <div className="surface flex items-center gap-3 p-3">
-      {e.poster ? <img src={e.poster} alt="" className="h-14 w-10 rounded object-cover" /> : <div className="h-14 w-10 rounded bg-muted" />}
+    <div className="surface flex items-start gap-3 p-3">
+      {e.poster ? <img src={e.poster} alt="" className="h-16 w-11 shrink-0 rounded object-cover" /> : <div className="h-16 w-11 shrink-0 rounded bg-muted" />}
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{e.title}</div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <i className={`dot dot-${e.kind}`} /> {KIND_LABEL[e.kind]}
-          {showDate && <span>· {e.date}</span>}
-          {e.time && <span>· {e.time}</span>}
-          {e.remindDays >= 0 && <span>· 🔔 {e.remindDays === 0 ? "same day" : `${e.remindDays}d before`}</span>}
+        <div className="line-clamp-2 break-words font-medium leading-snug">{e.title}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><i className={`dot dot-${e.kind}`} /> {KIND_LABEL[e.kind]}</span>
+          {showDate && <span>{shortDate(e.date)}</span>}
+          {e.time && <span>{e.time}</span>}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {e.tmdbId && <a className="btn-ghost text-xs" href={letterboxdUrl(e.tmdbId)} target="_blank" rel="noreferrer">Letterboxd</a>}
+          <details className="relative">
+            <summary className="btn-ghost flex cursor-pointer list-none items-center gap-1 text-xs">Cinemas <ChevronDown size={12} /></summary>
+            <div className="surface absolute left-0 z-10 mt-1 flex w-28 flex-col p-1">
+              <a className="btn-ghost text-xs" href={tgvUrl(e.title)} target="_blank" rel="noreferrer">TGV</a>
+              <a className="btn-ghost text-xs" href={gscUrl(e.title)} target="_blank" rel="noreferrer">GSC</a>
+            </div>
+          </details>
+          <button className="btn-ghost text-xs" onClick={ics}>.ics</button>
+          <button className="btn-ghost text-xs" onClick={onDelete} aria-label="Delete">✕</button>
         </div>
       </div>
-      {e.tmdbId && <a className="btn-ghost text-xs" href={letterboxdUrl(e.tmdbId)} target="_blank" rel="noreferrer">Letterboxd ↗</a>}
-      <a className="btn-ghost text-xs" href={tgvUrl(e.title)} target="_blank" rel="noreferrer">TGV</a>
-      <a className="btn-ghost text-xs" href={gscUrl(e.title)} target="_blank" rel="noreferrer">GSC</a>
-      <button className="btn-ghost text-xs" onClick={ics} title="Add to phone calendar">.ics</button>
-      <button className="btn-ghost text-xs" onClick={onDelete}>✕</button>
+      <button className={`btn-ghost shrink-0 ${on ? "text-primary" : ""}`} onClick={onBell} aria-label={on ? "Reminder on" : "Reminder off"} title={on ? `${e.remindDays}d before` : "No reminder"}>
+        <Bell size={18} fill={on ? "currentColor" : "none"} />
+      </button>
     </div>
   );
 }
