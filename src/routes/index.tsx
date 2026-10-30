@@ -43,7 +43,7 @@ function Index() {
       const next = events.map((e) => {
         const t = reminderTime(e);
         if (t && !e.notified && Date.now() >= t) {
-          new Notification(`${KIND_LABEL[e.kind]}: ${e.title}`, { body: `On ${e.date}`, icon: e.poster ?? undefined });
+          new Notification(`${KIND_LABEL[e.kind]}: ${e.title}`, { body: `On ${e.date}`, ...(e.poster ? { icon: e.poster } : {}) });
           changed = true;
           return { ...e, notified: true };
         }

@@ -6,9 +6,9 @@ export type CalEvent = {
   title: string;
   kind: EventKind;
   date: string; // YYYY-MM-DD
-  time?: string; // HH:MM
-  tmdbId?: number;
-  poster?: string | null;
+  time?: string | undefined; // HH:MM
+  tmdbId?: number | undefined;
+  poster?: string | null | undefined;
   remindDays: number; // days before; -1 = none
   notified?: boolean;
 };
