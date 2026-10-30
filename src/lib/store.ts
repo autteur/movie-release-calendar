@@ -6,9 +6,9 @@ export type CalEvent = {
   title: string;
   kind: EventKind;
   date: string; // YYYY-MM-DD
-  time?: string; // HH:MM
-  tmdbId?: number;
-  poster?: string | null;
+  time?: string | undefined; // HH:MM
+  tmdbId?: number | undefined;
+  poster?: string | null | undefined;
   remindDays: number; // days before; -1 = none
   notified?: boolean;
 };
@@ -42,7 +42,7 @@ export function reminderTime(e: CalEvent): number | null {
   if (e.remindDays < 0) return null;
   const [h, m] = (e.time || "09:00").split(":").map(Number);
   const d = new Date(e.date + "T00:00:00");
-  d.setHours(h, m);
+  d.setHours(h ?? 9, m ?? 0);
   d.setDate(d.getDate() - e.remindDays);
   return d.getTime();
 }
@@ -55,3 +55,6 @@ export function toIcs(e: CalEvent): string {
       : "";
   return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Reel//EN\nBEGIN:VEVENT\nUID:${e.id}@reel\nDTSTART;VALUE=DATE:${d}\nSUMMARY:${KIND_LABEL[e.kind]}: ${e.title}\n${e.tmdbId ? `URL:${letterboxdUrl(e.tmdbId)}\n` : ""}${alarm}END:VEVENT\nEND:VCALENDAR`;
 }
+
+export const tgvUrl = (title: string) => `https://www.google.com/search?q=${encodeURIComponent(title + " site:tgv.com.my")}`;
+export const gscUrl = (title: string) => `https://www.google.com/search?q=${encodeURIComponent(title + " site:gsc.com.my")}`;
