@@ -55,3 +55,6 @@ export function toIcs(e: CalEvent): string {
       : "";
   return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Reel//EN\nBEGIN:VEVENT\nUID:${e.id}@reel\nDTSTART;VALUE=DATE:${d}\nSUMMARY:${KIND_LABEL[e.kind]}: ${e.title}\n${e.tmdbId ? `URL:${letterboxdUrl(e.tmdbId)}\n` : ""}${alarm}END:VEVENT\nEND:VCALENDAR`;
 }
+
+export const tgvUrl = (title: string) => `https://www.google.com/search?q=${encodeURIComponent(title + " site:tgv.com.my")}`;
+export const gscUrl = (title: string) => `https://www.google.com/search?q=${encodeURIComponent(title + " site:gsc.com.my")}`;

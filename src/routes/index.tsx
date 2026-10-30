@@ -5,6 +5,8 @@ import {
   useEvents,
   KIND_LABEL,
   letterboxdUrl,
+  tgvUrl,
+  gscUrl,
   reminderTime,
   toIcs,
   type CalEvent,
@@ -165,6 +167,8 @@ function EventRow({ e, onDelete, showDate }: { e: CalEvent; onDelete: () => void
         </div>
       </div>
       {e.tmdbId && <a className="btn-ghost text-xs" href={letterboxdUrl(e.tmdbId)} target="_blank" rel="noreferrer">Letterboxd ↗</a>}
+      <a className="btn-ghost text-xs" href={tgvUrl(e.title)} target="_blank" rel="noreferrer">TGV</a>
+      <a className="btn-ghost text-xs" href={gscUrl(e.title)} target="_blank" rel="noreferrer">GSC</a>
       <button className="btn-ghost text-xs" onClick={ics} title="Add to phone calendar">.ics</button>
       <button className="btn-ghost text-xs" onClick={onDelete}>✕</button>
     </div>
@@ -213,7 +217,7 @@ function AddSheet({ defaultDate, onClose, onAdd }: { defaultDate: string; onClos
       <div className="surface max-h-[90vh] w-full max-w-md overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-display mb-4 text-lg">Add to calendar</h2>
 
-        <label className="field-label">Search movie</label>
+        <label className="field-label">Search movie (Malaysia release dates)</label>
         <input className="field" placeholder="e.g. Dune" value={q} onChange={(e) => setQ(e.target.value)} />
         {err && <p className="mt-1 text-xs text-destructive">{err}</p>}
         {hits.length > 0 && (

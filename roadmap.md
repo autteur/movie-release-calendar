@@ -1,0 +1,3 @@
+- [x] Calendar with releases, premieres, fan screenings, reminders
+- [x] Malaysian release dates + TGV/GSC links
+- [ ] Live TGV/GSC showtimes (needs web-scraping service; awaiting user ok)

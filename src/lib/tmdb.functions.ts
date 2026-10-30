@@ -17,6 +17,7 @@ export const searchMovies = createServerFn({ method: "GET" })
     const isBearer = key.length > 40;
     const url = new URL("https://api.themoviedb.org/3/search/movie");
     url.searchParams.set("query", data.q);
+    url.searchParams.set("region", "MY");
     if (!isBearer) url.searchParams.set("api_key", key);
     const res = await fetch(url, {
       headers: isBearer ? { Authorization: `Bearer ${key}` } : {},
