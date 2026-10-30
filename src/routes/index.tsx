@@ -1,26 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronDown } from "lucide-react";
-import { searchMovies, type MovieHit } from "@/lib/tmdb.functions";
-import {
-  useEvents,
-  KIND_LABEL,
-  letterboxdUrl,
-  tgvUrl,
-  gscUrl,
-  reminderTime,
-  toIcs,
-  type CalEvent,
-  type EventKind,
-} from "@/lib/store";
+import { BookOpen } from "lucide-react";
+import { searchMovies, getMovieDetails, type MovieHit } from "@/lib/tmdb.functions";
+import { useEvents, KIND_LABEL, reminderTime, isUpcoming, isVisible, letterboxdUrl, type CalEvent, type EventKind } from "@/lib/store";
+import { EventCard, Sheet } from "@/components/reel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Reel — Movie Release Calendar" },
-      { name: "description", content: "Track movie releases, premieres and fan screenings with reminders." },
+      { name: "description", content: "Track Malaysian movie releases, premieres and fan screenings with reminders." },
       { property: "og:title", content: "Reel — Movie Release Calendar" },
-      { property: "og:description", content: "Track movie releases, premieres and fan screenings with reminders." },
+      { property: "og:description", content: "Track Malaysian movie releases, premieres and fan screenings with reminders." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,
@@ -38,14 +31,13 @@ function Index() {
   const [selected, setSelected] = useState(ymd(new Date()));
   const [adding, setAdding] = useState(false);
 
-  // reminder loop (works while the app is open)
   useEffect(() => {
     const tick = () => {
       if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
       let changed = false;
       const next = events.map((e) => {
         const t = reminderTime(e);
-        if (t && !e.notified && Date.now() >= t) {
+        if (t && !e.notified && !e.watched && Date.now() >= t) {
           new Notification(`${KIND_LABEL[e.kind]}: ${e.title}`, { body: `On ${e.date}`, ...(e.poster ? { icon: e.poster } : {}) });
           changed = true;
           return { ...e, notified: true };
@@ -59,6 +51,9 @@ function Index() {
     return () => clearInterval(i);
   }, [events]);
 
+  const today = ymd(new Date());
+  const visible = events.filter((e) => isVisible(e, today));
+
   const days = useMemo(() => {
     const start = new Date(month);
     start.setDate(1 - ((month.getDay() + 6) % 7));
@@ -71,18 +66,23 @@ function Index() {
 
   const byDate = useMemo(() => {
     const m: Record<string, CalEvent[]> = {};
-    events.forEach((e) => (m[e.date] ||= []).push(e));
+    visible.forEach((e) => (m[e.date] ||= []).push(e));
     return m;
-  }, [events]);
+  }, [visible]);
 
-  const today = ymd(new Date());
   const dayEvents = byDate[selected] ?? [];
-  const upcoming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+  const upcoming = visible.filter((e) => isUpcoming(e, today) && e.date !== selected).sort((a, b) => a.date.localeCompare(b.date));
+
+  const update = (n: CalEvent) => save(events.map((x) => (x.id === n.id ? n : x)));
+  const remove = (id: string) => save(events.filter((x) => x.id !== id));
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 md:py-10">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl tracking-tight">Reel</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-2xl tracking-tight">Reel</h1>
+          <Link to="/diary" className="btn-ghost flex items-center gap-1.5 text-sm"><BookOpen size={16} /> Diary</Link>
+        </div>
         <button className="btn-primary" onClick={() => setAdding(true)}>+ Add</button>
       </header>
 
@@ -99,13 +99,9 @@ function Index() {
             const evs = byDate[k] ?? [];
             const out = d.getMonth() !== month.getMonth();
             return (
-              <button
-                key={k}
-                onClick={() => setSelected(k)}
-                className={`day ${out ? "opacity-30" : ""} ${k === selected ? "day-selected" : ""} ${k === today ? "day-today" : ""}`}
-              >
+              <button key={k} onClick={() => setSelected(k)} className={`day ${out ? "opacity-30" : ""} ${k === selected ? "day-selected" : ""} ${k === today ? "day-today" : ""}`}>
                 <span>{d.getDate()}</span>
-                <span className="flex gap-0.5">
+                <span className="flex h-1.5 gap-0.5">
                   {evs.slice(0, 3).map((e) => <i key={e.id} className={`dot dot-${e.kind}`} />)}
                 </span>
               </button>
@@ -116,19 +112,19 @@ function Index() {
 
       <section className="mt-6">
         <h3 className="mb-3 text-sm text-muted-foreground">
-          {new Date(selected + "T00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+          {new Date(selected + "T00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
         </h3>
         {dayEvents.length === 0 && <p className="text-sm text-muted-foreground">Nothing on this day.</p>}
-        <div className="space-y-2">
-          {dayEvents.map((e) => <EventRow key={e.id} e={e} onDelete={() => save(events.filter((x) => x.id !== e.id))} onBell={() => save(events.map((x) => x.id === e.id ? { ...x, remindDays: x.remindDays >= 0 ? -1 : 1, notified: false } : x))} />)}
+        <div className="space-y-3">
+          {dayEvents.map((e) => <EventCard key={e.id} e={e} onChange={update} onDelete={() => remove(e.id)} />)}
         </div>
       </section>
 
       {upcoming.length > 0 && (
         <section className="mt-8">
           <h3 className="mb-3 text-sm text-muted-foreground">Upcoming</h3>
-          <div className="space-y-2">
-            {upcoming.map((e) => <EventRow key={e.id} e={e} showDate onDelete={() => save(events.filter((x) => x.id !== e.id))} onBell={() => save(events.map((x) => x.id === e.id ? { ...x, remindDays: x.remindDays >= 0 ? -1 : 1, notified: false } : x))} />)}
+          <div className="space-y-3">
+            {upcoming.map((e) => <EventCard key={e.id} e={e} onChange={update} onDelete={() => remove(e.id)} />)}
           </div>
         </section>
       )}
@@ -137,10 +133,12 @@ function Index() {
         <AddSheet
           defaultDate={selected}
           onClose={() => setAdding(false)}
-          onAdd={(list) => {
-            save([...events, ...list]);
+          onAdd={(ev) => {
+            save([...events, ev]);
             setAdding(false);
-            if (list[0]) setSelected(list[0].date);
+            setSelected(ev.date);
+            const d = new Date(ev.date + "T00:00");
+            setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
           }}
         />
       )}
@@ -148,52 +146,13 @@ function Index() {
   );
 }
 
-const shortDate = (d: string) => new Date(d + "T00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-
-function EventRow({ e, onDelete, onBell, showDate }: { e: CalEvent; onDelete: () => void; onBell: () => void; showDate?: boolean }) {
-  const ics = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([toIcs(e)], { type: "text/calendar" }));
-    a.download = `${e.title}.ics`;
-    a.click();
-  };
-  const on = e.remindDays >= 0;
-  return (
-    <div className="surface flex items-start gap-3 p-3">
-      {e.poster ? <img src={e.poster} alt="" className="h-16 w-11 shrink-0 rounded object-cover" /> : <div className="h-16 w-11 shrink-0 rounded bg-muted" />}
-      <div className="min-w-0 flex-1">
-        <div className="line-clamp-2 break-words font-medium leading-snug">{e.title}</div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><i className={`dot dot-${e.kind}`} /> {KIND_LABEL[e.kind]}</span>
-          {showDate && <span>{shortDate(e.date)}</span>}
-          {e.time && <span>{e.time}</span>}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          {e.tmdbId && <a className="btn-ghost text-xs" href={letterboxdUrl(e.tmdbId)} target="_blank" rel="noreferrer">Letterboxd</a>}
-          <details className="relative">
-            <summary className="btn-ghost flex cursor-pointer list-none items-center gap-1 text-xs">Cinemas <ChevronDown size={12} /></summary>
-            <div className="surface absolute left-0 z-10 mt-1 flex w-28 flex-col p-1">
-              <a className="btn-ghost text-xs" href={tgvUrl(e.title)} target="_blank" rel="noreferrer">TGV</a>
-              <a className="btn-ghost text-xs" href={gscUrl(e.title)} target="_blank" rel="noreferrer">GSC</a>
-            </div>
-          </details>
-          <button className="btn-ghost text-xs" onClick={ics}>.ics</button>
-          <button className="btn-ghost text-xs" onClick={onDelete} aria-label="Delete">✕</button>
-        </div>
-      </div>
-      <button className={`btn-ghost shrink-0 ${on ? "text-primary" : ""}`} onClick={onBell} aria-label={on ? "Reminder on" : "Reminder off"} title={on ? `${e.remindDays}d before` : "No reminder"}>
-        <Bell size={18} fill={on ? "currentColor" : "none"} />
-      </button>
-    </div>
-  );
-}
-
-function AddSheet({ defaultDate, onClose, onAdd }: { defaultDate: string; onClose: () => void; onAdd: (e: CalEvent[]) => void }) {
+function AddSheet({ defaultDate, onClose, onAdd }: { defaultDate: string; onClose: () => void; onAdd: (e: CalEvent) => void }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<MovieHit[]>([]);
   const [err, setErr] = useState<string | undefined>();
+  const [searching, setSearching] = useState(false);
   const [movie, setMovie] = useState<MovieHit | null>(null);
-  const [title, setTitle] = useState("");
+  const [directors, setDirectors] = useState<string[]>([]);
   const [kind, setKind] = useState<EventKind>("release");
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState("");
@@ -201,90 +160,96 @@ function AddSheet({ defaultDate, onClose, onAdd }: { defaultDate: string; onClos
 
   useEffect(() => {
     if (q.length < 2) return setHits([]);
+    setSearching(true);
     const t = setTimeout(async () => {
       const r = await searchMovies({ data: { q } });
       setHits(r.results);
       setErr(r.error);
-    }, 300);
+      setSearching(false);
+    }, 350);
     return () => clearTimeout(t);
   }, [q]);
 
-  const pick = (m: MovieHit) => {
+  const pick = async (m: MovieHit) => {
     setMovie(m);
-    setTitle(m.title);
     if (m.release_date) setDate(m.release_date);
     setHits([]);
     setQ("");
+    const d = await getMovieDetails({ data: { id: m.id } });
+    setDirectors(d.directors);
+    if (d.myRelease && kind === "release") setDate(d.myRelease);
   };
 
   const submit = async () => {
-    if (!title || !date) return;
+    if (!movie || !date) return;
     if (remind >= 0 && typeof Notification !== "undefined" && Notification.permission === "default") {
       await Notification.requestPermission();
     }
-    onAdd([{ id: crypto.randomUUID(), title, kind, date, time: time || undefined, tmdbId: movie?.id, poster: movie?.poster, remindDays: remind }]);
+    onAdd({ id: crypto.randomUUID(), title: movie.title, kind, date, time: time || undefined, tmdbId: movie.id, poster: movie.poster, year: movie.release_date?.slice(0, 4), directors, remindDays: remind });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay md:items-center" onClick={onClose}>
-      <div className="surface max-h-[90vh] w-full max-w-md overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-display mb-4 text-lg">Add to calendar</h2>
+    <Sheet title="Add to calendar" onClose={onClose}>
+      {!movie && (
+        <>
+          <label className="field-label">Search movie</label>
+          <input className="field" autoFocus placeholder="e.g. Dune 3" value={q} onChange={(e) => setQ(e.target.value)} />
+          {err && <p className="mt-1 text-xs text-destructive">{err}</p>}
+          {searching && <p className="mt-2 text-xs text-muted-foreground">Searching…</p>}
+          {hits.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {hits.map((m) => (
+                <button key={m.id} onClick={() => pick(m)} className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted">
+                  {m.poster ? <img src={m.poster} alt="" className="h-12 w-8 rounded object-cover" /> : <div className="h-12 w-8 rounded bg-muted" />}
+                  <div className="text-sm">{m.title} <span className="text-muted-foreground">{m.release_date?.slice(0, 4)}</span></div>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
-        <label className="field-label">Search movie (Malaysia release dates)</label>
-        <input className="field" placeholder="e.g. Dune" value={q} onChange={(e) => setQ(e.target.value)} />
-        {err && <p className="mt-1 text-xs text-destructive">{err}</p>}
-        {hits.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {hits.map((m) => (
-              <button key={m.id} onClick={() => pick(m)} className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted">
-                {m.poster ? <img src={m.poster} alt="" className="h-12 w-8 rounded object-cover" /> : <div className="h-12 w-8 rounded bg-muted" />}
-                <div className="text-sm">{m.title} <span className="text-muted-foreground">{m.release_date?.slice(0, 4)}</span></div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {movie && (
-          <div className="mt-3 flex gap-3 rounded-md bg-muted p-3">
-            {movie.poster && <img src={movie.poster} alt="" className="h-20 w-14 rounded object-cover" />}
-            <div className="min-w-0 text-xs text-muted-foreground">
-              <p className="line-clamp-3">{movie.overview}</p>
-              <a className="mt-1 inline-block text-primary" href={letterboxdUrl(movie.id)} target="_blank" rel="noreferrer">Open on Letterboxd ↗</a>
+      {movie && (
+        <div className="mt-2 flex gap-3">
+          {movie.poster && <img src={movie.poster} alt="" className="poster h-24 w-16" />}
+          <div className="min-w-0">
+            <div className="font-title text-lg leading-tight">{movie.title}</div>
+            {directors.length > 0 && <p className="mt-0.5 text-xs text-muted-foreground">Directed by {directors.join(", ")}</p>}
+            <div className="mt-1 flex gap-3 text-xs">
+              <a className="text-primary" href={letterboxdUrl(movie.id)} target="_blank" rel="noreferrer">Letterboxd ↗</a>
+              <button className="text-muted-foreground hover:text-foreground" onClick={() => { setMovie(null); setDirectors([]); }}>Change</button>
             </div>
           </div>
-        )}
-
-        <label className="field-label">Title</label>
-        <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} />
-
-        <label className="field-label">Type</label>
-        <div className="grid grid-cols-2 gap-2">
-          {(Object.keys(KIND_LABEL) as EventKind[]).map((k) => (
-            <button key={k} onClick={() => setKind(k)} className={`chip ${kind === k ? "chip-on" : ""}`}>
-              <i className={`dot dot-${k}`} /> {KIND_LABEL[k]}
-            </button>
-          ))}
         </div>
+      )}
 
-        <div className="grid grid-cols-2 gap-2">
-          <div><label className="field-label">Date</label><input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-          <div><label className="field-label">Time</label><input type="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} /></div>
-        </div>
-
-        <label className="field-label">Reminder</label>
-        <select className="field" value={remind} onChange={(e) => setRemind(Number(e.target.value))}>
-          <option value={-1}>None</option>
-          <option value={0}>Same day</option>
-          <option value={1}>1 day before</option>
-          <option value={3}>3 days before</option>
-          <option value={7}>1 week before</option>
-        </select>
-
-        <div className="mt-5 flex gap-2">
-          <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
-          <button className="btn-primary flex-1" onClick={submit}>Save</button>
-        </div>
+      <label className="field-label">Type</label>
+      <div className="grid grid-cols-2 gap-2">
+        {(Object.keys(KIND_LABEL) as EventKind[]).map((k) => (
+          <button key={k} onClick={() => setKind(k)} className={`chip ${kind === k ? "chip-on" : ""}`}>
+            <i className={`dot dot-${k}`} /> {KIND_LABEL[k]}
+          </button>
+        ))}
       </div>
-    </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div><label className="field-label">Date</label><input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="field-label">Time</label><input type="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+      </div>
+
+      <label className="field-label">Reminder</label>
+      <select className="field" value={remind} onChange={(e) => setRemind(Number(e.target.value))}>
+        <option value={-1}>None</option>
+        <option value={0}>Same day</option>
+        <option value={1}>1 day before</option>
+        <option value={3}>3 days before</option>
+        <option value={7}>1 week before</option>
+      </select>
+
+      <div className="mt-5 flex gap-2">
+        <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
+        <button className="btn-primary flex-1 disabled:opacity-40" disabled={!movie} onClick={submit}>Save</button>
+      </div>
+    </Sheet>
   );
 }

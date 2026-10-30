@@ -106,11 +106,15 @@
   --color-overlay: var(--overlay);
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-display: "Fraunces", Georgia, serif;
+  --font-title: "Noto Serif", Georgia, serif;
 }
 
+@utility font-title { font-family: var(--font-title); font-weight: 700; letter-spacing: -0.005em; }
 @utility surface { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
 @utility btn-primary { background: var(--primary); color: var(--primary-foreground); border-radius: calc(var(--radius) - 2px); padding: 0.5rem 1rem; font-weight: 600; font-size: 0.875rem; &:hover { opacity: 0.9; } }
 @utility btn-ghost { color: var(--muted-foreground); border-radius: calc(var(--radius) - 4px); padding: 0.375rem 0.625rem; &:hover { background: var(--muted); color: var(--foreground); } }
+@utility icon-btn { color: var(--muted-foreground); padding: 0.3rem; border-radius: 9999px; transition: color .15s; &:hover { color: var(--foreground); } }
+@utility link-quiet { &:hover { color: var(--foreground); } }
 @utility day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0.5rem 0; min-height: 3rem; border-radius: calc(var(--radius) - 4px); color: var(--foreground); font-size: 0.875rem; &:hover { background: var(--muted); } }
 @utility day-selected { background: var(--muted); outline: 1px solid var(--primary); }
 @utility day-today { color: var(--primary); font-weight: 700; }
@@ -119,7 +123,16 @@
 @utility dot-premiere { background: var(--kind-premiere); }
 @utility dot-fan { background: var(--kind-fan); }
 @utility dot-other { background: var(--kind-other); }
-@utility field { width: 100%; background: var(--background); border: 1px solid var(--input); border-radius: calc(var(--radius) - 4px); padding: 0.5rem 0.75rem; font-size: 0.875rem; color-scheme: dark; &:focus { outline: 1px solid var(--ring); } }
+@utility poster { flex-shrink: 0; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 10px 24px -6px oklch(0 0 0 / 65%); }
+@utility banner { --k: var(--kind-release); position: relative; display: flex; gap: 1rem; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: linear-gradient(100deg, color-mix(in oklab, var(--k) 7%, var(--card)) 0%, var(--card) 55%); overflow: visible; }
+@utility banner-release { --k: var(--kind-release); }
+@utility banner-premiere { --k: var(--kind-premiere); border-color: color-mix(in oklab, var(--kind-premiere) 35%, var(--border)); background: linear-gradient(100deg, color-mix(in oklab, var(--kind-premiere) 16%, var(--card)) 0%, var(--card) 70%); }
+@utility banner-fan { --k: var(--kind-fan); border-color: color-mix(in oklab, var(--kind-fan) 35%, var(--border)); background: linear-gradient(100deg, color-mix(in oklab, var(--kind-fan) 16%, var(--card)) 0%, var(--card) 70%); }
+@utility banner-other { --k: var(--kind-other); }
+@utility kind-label { color: color-mix(in oklab, var(--k) 85%, var(--foreground)); }
+@utility menu { position: absolute; right: 0; bottom: 100%; margin-bottom: 0.25rem; z-index: 20; min-width: 13rem; padding: 0.25rem; background: var(--popover); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 12px 30px -8px oklch(0 0 0 / 60%); }
+@utility menu-item { display: flex; width: 100%; align-items: center; gap: 0.6rem; padding: 0.5rem 0.65rem; font-size: 0.85rem; border-radius: calc(var(--radius) - 6px); text-align: left; &:hover { background: var(--muted); } }
+@utility field { width: 100%; background: var(--background); border: 1px solid var(--input); border-radius: calc(var(--radius) - 4px); padding: 0.5rem 0.75rem; font-size: 0.875rem; color-scheme: dark; accent-color: var(--primary); &:focus { outline: 1px solid var(--ring); } &::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; } }
 @utility field-label { display: block; margin: 0.875rem 0 0.375rem; font-size: 0.75rem; color: var(--muted-foreground); }
 @utility chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px); font-size: 0.8125rem; }
 @utility chip-on { border-color: var(--primary); background: var(--muted); }
